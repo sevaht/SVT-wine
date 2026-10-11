@@ -2032,6 +2032,18 @@ static RECT get_visible_rect( HWND hwnd, BOOL shaped, UINT style, UINT ex_style,
     if (!user_driver->pGetWindowStyleMasks( hwnd, style, ex_style, &style_mask, &ex_style_mask )) return rects->window;
     if (!NtUserAdjustWindowRect( &rect, style & style_mask, FALSE, ex_style & ex_style_mask, dpi )) return rects->window;
 
+    /* The window manager draws its frame over the non-client area of the window, so it cannot
+     * take more off a side than the window really has there. Without this, a window that keeps
+     * WS_CAPTION and WS_THICKFRAME but answers WM_NCCALCSIZE with a smaller non-client area (a
+     * frameless Electron window) is treated as having a full title bar and frame, and its X11
+     * window ends up that much smaller than the client area it must hold. Upstream Wine fixed
+     * this differently (6cfa941df3: use the whole window rect), which leaves the frame area
+     * unpainted as thick borders on the right and bottom of such a window. */
+    rect.left   = max( rect.left,   min( 0, rects->window.left - rects->client.left ));
+    rect.top    = max( rect.top,    min( 0, rects->window.top - rects->client.top ));
+    rect.right  = min( rect.right,  max( 0, rects->window.right - rects->client.right ));
+    rect.bottom = min( rect.bottom, max( 0, rects->window.bottom - rects->client.bottom ));
+
     visible_rect = rects->window;
     visible_rect.left   -= rect.left;
     visible_rect.right  -= rect.right;

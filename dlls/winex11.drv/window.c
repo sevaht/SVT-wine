@@ -556,6 +556,10 @@ static unsigned long get_mwm_decorations_for_style( DWORD style, DWORD ex_style 
 static unsigned long get_mwm_decorations( struct x11drv_win_data *data, DWORD style, DWORD ex_style )
 {
     if (EqualRect( &data->rects.window, &data->rects.visible )) return 0;
+    /* A window that keeps the caption styles but has no non-client area above its client area
+     * has removed its own caption (a frameless Electron window), so there is no title bar for
+     * the window manager to draw: the application draws its own. */
+    if (data->rects.client.top <= data->rects.window.top) return 0;
     return get_mwm_decorations_for_style( style, ex_style );
 }
 
