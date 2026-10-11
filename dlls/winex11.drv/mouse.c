@@ -1571,6 +1571,15 @@ void move_resize_window( HWND hwnd, int dir, POINT pos )
 
         while (NtUserPeekMessage( &msg, 0, 0, 0, PM_REMOVE ))
         {
+            /* The window manager owns the mouse while it moves the window, as the system's own
+             * move loop does on Windows, which does not deliver mouse input to the application
+             * meanwhile. Applications are not written for it: Chromium forwards such a message to
+             * its window's handler from inside the nested WM_SYSCOMMAND, which leaves that handler
+             * believing the WM_SYSCOMMAND went unhandled, so it runs DefWindowProc again, and the
+             * second run starts a move with no button down that the window manager never ends. */
+            if ((msg.message >= WM_MOUSEFIRST && msg.message <= WM_MOUSELAST) ||
+                (msg.message >= WM_NCMOUSEMOVE && msg.message <= WM_NCXBUTTONDBLCLK))
+                continue;
             if (!NtUserCallMsgFilter( &msg, MSGF_SIZE ))
             {
                 NtUserTranslateMessage( &msg, 0 );
